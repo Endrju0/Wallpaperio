@@ -1,0 +1,20 @@
+{
+  "name": "wallpaperio",
+  "version": "1.0.0",
+  "description": "Sets National Geographics photo of the day as wallpaper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "wallpaper",
+    "photo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^6.0.12",
+    "request": "^2.88.0",
+    "wallpaper": "^4.4.1"
+  }
+}
