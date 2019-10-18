@@ -2,11 +2,13 @@ const electron = require('electron');
 const request = require('request');
 const fs = require('fs');
 const wallpaper = require('wallpaper');
+const cheerio = require('cheerio');
 
 const {app, Menu, Tray, dialog} = electron;
 
 // env variables
-PHOTO_URL = 'https://picsum.photos/200/300';    //https://www.nationalgeographic.com/photography/photo-of-the-day/
+// const PHOTO_URL = 'https://picsum.photos/200/300';
+const PHOTO_URL = 'https://www.nationalgeographic.com/photography/photo-of-the-day/';
 
 let tray;
 
@@ -69,24 +71,42 @@ const randomPhotoDialog = {
 
  // Download new photo -> save as file with datetime in name -> set it as wallpaper
 function getPhoto() {
-     // Format file path
-     let date = new Date().toLocaleString();
-     let path = 'data/' + date.replace(/:\s*/g, ";") + '.jpg'
+    
+    // let date = new Date().toLocaleString();
+    // let path = 'data/' + date.replace(/:\s*/g, ";") + '.jpg'
+    // downloadFile(PHOTO_URL, path).then(function(){
+    //     wallpaper.set(path);
+    // })
 
-     // If photo is downloaded, save it as wallpaper
-     downloadFile(PHOTO_URL, path).then(function(){
-         wallpaper.set(path);
-     });
+    // Get body from html request
+    request(PHOTO_URL, (error, response, html) => {
+        if(!error && response.statusCode == 200) {
+            // Search through body to find og:image link
+            var $ = cheerio.load(html);
+            var img = $('meta[property="og:image"]').attr('content');
+            
+            // Format file path
+            let date = new Date().toLocaleString();
+            let path = 'data/' + date.replace(/:\s*/g, ";") + '.jpg'
+
+            // If photo is downloaded, save it as wallpaper
+            downloadFile(img, path).then(function(){
+                wallpaper.set(path);
+            });
+        }
+    }) 
 }
 
 // Function to save file from url to specific path
 function downloadFile(file_url, targetPath) {
     return new Promise(function(resolve, reject){
+        // Get file from url
         var req = request({
             method: 'GET',
             uri: file_url
         });
 
+        // Save file to targetPath
         var out = fs.createWriteStream(targetPath);
         req.pipe(out);
 
@@ -94,11 +114,19 @@ function downloadFile(file_url, targetPath) {
             console.log("File " + targetPath + " successfully downloaded");
             resolve();
         });
+
+        req.on('error', (e) => {
+            console.log(e);
+        });
     });
 }
 
 // Random photo from /data
 function randomPhoto() {
+    (async () => {
+        await wallpaper.get();
+        //=> '/Users/sindresorhus/unicorn.jpg'
+    })();
     fs.readdir('data', (err, files) => {
         // Set random wallpaper if /data isn't empty
         if(Array.isArray(files) && files.length) {
