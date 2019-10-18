@@ -9,6 +9,13 @@ const {app, Menu, Tray, dialog} = electron;
 // env variables
 // const PHOTO_URL = 'https://picsum.photos/200/300';
 const PHOTO_URL = 'https://www.nationalgeographic.com/photography/photo-of-the-day/';
+const INTERVAL_TIME = 5000;
+
+/**
+ * Variables
+ */
+var slideshow_queue = [];
+var interval = setInterval(() => slideShow(), INTERVAL_TIME);
 
 let tray;
 
@@ -92,6 +99,10 @@ function getPhoto() {
             // If photo is downloaded, save it as wallpaper
             downloadFile(img, path).then(function(){
                 wallpaper.set(path);
+
+                // Restart interval time
+                clearInterval(interval);
+                interval = setInterval(() => slideShow(), INTERVAL_TIME);
             });
         }
     }) 
@@ -121,17 +132,26 @@ function downloadFile(file_url, targetPath) {
     });
 }
 
-// Random photo from /data
+// Set random photo as wallpaper from /data or download new one
 function randomPhoto() {
-    (async () => {
-        await wallpaper.get();
-        //=> '/Users/sindresorhus/unicorn.jpg'
-    })();
     fs.readdir('data', (err, files) => {
         // Set random wallpaper if /data isn't empty
         if(Array.isArray(files) && files.length) {
             var rand = files[Math.floor(Math.random() * files.length)];
-            wallpaper.set('data/'+rand);
+
+            wallpaper.get().then(function(result) {
+                // Get filename instead of full path
+                var current_wallpaper = result.substring(result.lastIndexOf('\\'||'\/') + 1);
+
+                // If selected photo doesn't match wallpaper filename -> set is as wallpaper
+                if(current_wallpaper != rand) {
+                    wallpaper.set('data/'+rand);
+                    
+                    // Restart interval time
+                    clearInterval(interval);
+                    interval = setInterval(() => slideShow(), INTERVAL_TIME);
+                } else randomPhoto();
+            });
         } else {
             // Or download new one
             dialog.showMessageBox(randomPhotoDialog, i => {
@@ -139,4 +159,25 @@ function randomPhoto() {
             })
         } 
     });
+}
+
+// Set wallpaper in interval
+function slideShow() {
+    // If slideshow queue isn't empty pop latest photo and set is as wallpaper
+    if(Array.isArray(slideshow_queue) && slideshow_queue.length) {
+        wallpaper.set('data/'+slideshow_queue.pop());
+    } else {
+        // If slideshow queue is empty, push all photos from /data
+        var files = fs.readdirSync('data');
+        if(Array.isArray(files) && files.length) {
+            for (var i in files) {
+                slideshow_queue.push(files[i]); 
+            }
+        } else {
+            // If there isn't any photos
+            dialog.showMessageBox(randomPhotoDialog, i => {
+                if(i==0) getPhoto();
+            });
+        }
+    }
 }
