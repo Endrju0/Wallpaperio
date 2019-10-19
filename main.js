@@ -16,6 +16,7 @@ const INTERVAL_TIME = 5000;
  */
 var slideshow_queue = [];
 var interval = setInterval(() => slideShow(), INTERVAL_TIME);
+var tcp_err_ctr = 0;
 
 let tray;
 
@@ -72,6 +73,12 @@ const randomPhotoDialog = {
     message: 'You don\'t have any photos downloaded. Do you want to download the latest one?'
 }
 
+const serverBusyDialog = {
+    type: 'info',
+    buttons: ['OK'],
+    message: 'Server is busy. Try again later.'
+}
+
 /**
  * Functions
  */
@@ -100,6 +107,8 @@ function getPhoto() {
             downloadFile(img, path).then(function(){
                 wallpaper.set(path);
 
+                
+            }).then(function() {
                 // Restart interval time
                 clearInterval(interval);
                 interval = setInterval(() => slideShow(), INTERVAL_TIME);
@@ -127,7 +136,18 @@ function downloadFile(file_url, targetPath) {
         });
 
         req.on('error', (e) => {
+            // ECONNRESET, after 5 attempts stop downloading file
             console.log(e);
+            console.log(tcp_err_ctr);
+            if(tcp_err_ctr++ < 1 ) downloadFile(file_url, targetPath)
+            else {
+                fs.unlink(targetPath, (err) => {
+                    if (err) throw err;
+                    console.log('successfully deleted /tmp/hello');
+                  });
+                  tcp_err_ctr = 0;
+                dialog.showMessageBox(serverBusyDialog);
+            }
         });
     });
 }
