@@ -20,6 +20,7 @@ const DEBUG = true;
 var slideshow_queue = [];
 var interval = setInterval(() => slideShow(), INTERVAL_TIME);
 var tcp_err_ctr = 0;
+var user_relative_path = 'data/';
 
 let tray;
 
@@ -61,6 +62,12 @@ const trayMenuTemplate = [
         }
     },
     {
+        label: 'Dislike this wallpaper',
+        click() {
+            banWallpaper();
+        }
+    },
+    {
         label: 'Quit',
         accelerator: 'CmdOrCtrl+Q',
         click() {
@@ -84,7 +91,7 @@ const randomPhotoDialog = {
 function getPhoto() {
     if(DEBUG) console.log('getPhoto');
     // let date = new Date().toLocaleString();
-    // let path = 'data/' + date.replace(/:\s*/g, ";") + '.jpg'
+    // let path = user_relative_path + date.replace(/:\s*/g, ";") + '.jpg'
     // downloadFile(PHOTO_URL, path).then(function(){
     //     wallpaper.set(path);
     // })
@@ -99,7 +106,7 @@ function getPhoto() {
             
             // Format file path
             let date = new Date().toLocaleString();
-            let path = 'data/' + date.replace(/:\s*/g, ";") + '.jpg'
+            let path = user_relative_path + date.replace(/:\s*/g, ";") + '.jpg'
             if(DEBUG) console.log('Path: ' + path);
 
             // If photo is downloaded, save it as wallpaper
@@ -148,7 +155,7 @@ function downloadFile(file_url, target_path) {
         
         if(DEBUG) {
             // Update the received bytes
-            req.on('data', function(chunk) {
+            req.on(user_relative_path, function(chunk) {
                 received_bytes += chunk.length;
                 showProgress(received_bytes);
             });
@@ -187,20 +194,20 @@ function showProgress(received){
     console.log(received + " bytes.");
 }
 
-// Set random photo as wallpaper from /data or download new one
+// Set random photo as wallpaper from user_relative_path or download new one
 function randomPhoto() {
-    fs.readdir('data', (err, files) => {
-        // Set random wallpaper if /data isn't empty
+    fs.readdir(user_relative_path, (err, files) => {
+        // Set random wallpaper if user_relative_path isn't empty
         if(Array.isArray(files) && files.length) {
             var rand = files[Math.floor(Math.random() * files.length)];
 
             wallpaper.get().then(function(result) {
                 // Get filename instead of full path
                 var current_wallpaper = result.substring(result.lastIndexOf('\\'||'\/') + 1);
-
                 // If selected photo doesn't match wallpaper filename -> set is as wallpaper
-                if(current_wallpaper != rand) {
-                    wallpaper.set('data/'+rand);
+                // and if wallpaper isn't banned
+                if(current_wallpaper != rand && !isBanned(rand)) {
+                    wallpaper.set(user_relative_path+rand);
                     
                     // Restart interval time
                     clearInterval(interval);
@@ -220,19 +227,43 @@ function randomPhoto() {
 function slideShow() {
     // If slideshow queue isn't empty pop latest photo and set is as wallpaper
     if(Array.isArray(slideshow_queue) && slideshow_queue.length) {
-        wallpaper.set('data/'+slideshow_queue.pop());
+        wallpaper.set(user_relative_path+slideshow_queue.pop());
     } else {
-        // If slideshow queue is empty, push all photos from /data
-        var files = fs.readdirSync('data');
+        // If slideshow queue is empty, push all photos from user_relative_path
+        var files = fs.readdirSync(user_relative_path);
         if(Array.isArray(files) && files.length) {
             for (var i in files) {
-                slideshow_queue.push(files[i]); 
+                isBanned(files[i])? false : slideshow_queue.push(files[i]); 
             }
         } else {
             // If there isn't any photos
+            clearInterval(interval);
             dialog.showMessageBox(randomPhotoDialog, i => {
                 if(i==0) getPhoto();
             });
         }
     }
+}
+
+// Add _banned in name to prevent using this file as wallpaper
+function banWallpaper() {
+    if(DEBUG) console.log('banWallpaper');
+    wallpaper.get().then(function(result) {
+        // Get filename instead of full path
+        var old_wallpaper = user_relative_path + result.substring(result.lastIndexOf('\\'||'\/') + 1);
+        var current_wallpaper = user_relative_path + result.substring(result.lastIndexOf('\\'||'\/') + 1).replace(/\.[^/.]+$/, "")+'_banned.jpg';
+        if(DEBUG) {
+            console.log(old_wallpaper);
+            console.log(current_wallpaper);
+        }
+        fs.rename(old_wallpaper, current_wallpaper, function(err) {
+            if ( err ) console.log('ERROR: ' + err);
+        });
+    });
+}
+
+// Check if filename ends with _banned (without extension) 52_banned.jpg -> _banned
+function isBanned(file_name) {
+    var file_name = file_name.replace(/\.[^/.]+$/, "").substring(file_name.lastIndexOf('_') + 1);
+    return file_name === 'banned' ? true : false;
 }
