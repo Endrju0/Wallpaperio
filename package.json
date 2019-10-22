@@ -4,17 +4,23 @@
   "description": "Sets National Geographics photo of the day as wallpaper",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds && cp settings.json release-builds/wallpaperio-darwin-x64/ && cp icon.icns release-builds/wallpaperio-darwin-x64/icon.icns",
+    "package-win": "electron-packager . Wallpaperio --overwrite --asar --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --version-string.CompanyName=CE --version-string.FileDescription=CE --version-string.ProductName=\"Wallpaperio\" --out=release-builds && cp settings.json release-builds/Wallpaperio-win32-ia32/ && cp icon.ico release-builds/Wallpaperio-win32-ia32/icon.ico ",
+    "package-linux": "electron-packager . Wallpaperio --overwrite --asar --platform=linux --arch=x64 --icon=assets/icons/png/icon.png --prune=true --out=release-builds && cp settings.json release-builds/Wallpaperio-linux-x64/ && cp icon.png release-builds/Wallpaperio-linux-x64/icon.png"
   },
   "keywords": [
     "wallpaper",
-    "photo"
+    "photo",
+    "wallpaperio"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "electron": "^6.0.12",
+    "electron-packager": "^14.0.6",
+    "mv": "^2.1.1",
     "node-notifier": "^6.0.0",
     "request": "^2.88.0",
     "wallpaper": "^4.4.1"
