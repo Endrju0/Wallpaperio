@@ -1,6 +1,8 @@
 const electron = require('electron');
-const request = require('request');
+const path = require('path');
+const os = require('os');
 const fs = require('fs');
+const request = require('request');
 const wallpaper = require('wallpaper');
 const cheerio = require('cheerio');
 const notifier = require('node-notifier');
@@ -12,7 +14,7 @@ const {app, Menu, Tray, dialog} = electron;
 const PHOTO_URL = 'https://www.nationalgeographic.com/photography/photo-of-the-day/';
 const INTERVAL_TIME = 5000;
 const CONN_ATTEMPT = 5;
-const DEBUG = false;
+const DEBUG = true;
 
 /**
  * Variables
@@ -24,7 +26,7 @@ var user_absolute_path;
 
 let tray;
 
-
+os
 /**
  * App
  */
@@ -35,7 +37,7 @@ app.on('ready', function() {
         appReady();
     } else {
         let settings_updated = {
-            path: app.getAppPath() + '\\wallpaperio\\'
+            path: path.join(os.homedir(), 'wallpaperio\\')
         };
         fs.writeFile("settings.json", JSON.stringify(settings_updated), function(err) {
             if(err) return console.log(err);
@@ -143,12 +145,12 @@ function getPhoto() {
             
             // Format file path
             let date = new Date().toLocaleString();
-            let path = user_absolute_path + date.replace(/:\s*/g, ";") + '.jpg'
-            if(DEBUG) console.log('Path: ' + path);
+            let file_path = path.join(user_absolute_path, date.replace(/:\s*/g, ";") + '.jpg');
+            if(DEBUG) console.log('Path: ' + file_path);
 
             // If photo is downloaded, save it as wallpaper
-            downloadFile(img, path).then(function(){
-                wallpaper.set(path);
+            downloadFile(img, file_path).then(function(){
+                wallpaper.set(file_path);
             }).then(function() {
                 // Restart interval time
                 clearInterval(interval);
@@ -266,6 +268,7 @@ function slideShow() {
     if(Array.isArray(slideshow_queue) && slideshow_queue.length) {
         wallpaper.set(user_absolute_path+slideshow_queue.pop());
     } else {
+        if (!fs.existsSync(user_absolute_path)) fs.mkdirSync(user_absolute_path);
         // If slideshow queue is empty, push all photos from user_absolute_path
         var files = fs.readdirSync(user_absolute_path);
         if(Array.isArray(files) && files.length) {
@@ -287,8 +290,8 @@ function banWallpaper() {
     if(DEBUG) console.log('banWallpaper');
     wallpaper.get().then(function(result) {
         // Get filename instead of full path
-        var old_wallpaper = user_absolute_path + result.substring(result.lastIndexOf('\\'||'\/') + 1);
-        var current_wallpaper = user_absolute_path + result.substring(result.lastIndexOf('\\'||'\/') + 1).replace(/\.[^/.]+$/, "")+'_banned.jpg';
+        var old_wallpaper = result;
+        var current_wallpaper = path.join(user_absolute_path, result.substring(result.lastIndexOf('\\'||'\/') + 1).replace(/\.[^/.]+$/, "")+'_banned.jpg');
         if(DEBUG) {
             console.log(old_wallpaper);
             console.log(current_wallpaper);
@@ -313,7 +316,7 @@ function changePath() {
         if(!new_path.canceled) {
             // Update settings.json file
             let settings_updated = {
-                path: new_path.filePaths + '\\wallpaperio\\'
+                path: path.join(String(new_path.filePaths), 'wallpaperio\\')
             };
             fs.writeFileSync('settings.json', JSON.stringify(settings_updated));
 
