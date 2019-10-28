@@ -5,9 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds && cp icon.icns release-builds/wallpaperio-darwin-x64/icon.icns",
-    "package-win": "electron-packager . Wallpaperio --overwrite --asar --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --version-string.CompanyName=CE --version-string.FileDescription=CE --version-string.ProductName=\"Wallpaperio\" --out=release-builds && cp icon.ico release-builds/Wallpaperio-win32-ia32/icon.ico ",
-    "package-linux": "electron-packager . Wallpaperio --overwrite --asar --platform=linux --arch=x64 --icon=assets/icons/png/icon.png --prune=true --out=release-builds  && cp icon.png release-builds/Wallpaperio-linux-x64/icon.png"
+    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=icon.icns --prune=true --out=release-builds && cp icon.icns release-builds/wallpaperio-darwin-x64/icon.icns",
+    "package-win": "electron-packager . Wallpaperio --overwrite --asar --platform=win32 --arch=ia32 --icon=icon.ico --prune=true --version-string.CompanyName=CE --version-string.FileDescription=CE --version-string.ProductName=\"Wallpaperio\" --out=release-builds && cp icon.ico release-builds/Wallpaperio-win32-ia32/icon.ico ",
+    "package-linux": "electron-packager . Wallpaperio --overwrite --asar --platform=linux --arch=x64 --icon=icon.png --prune=true --out=release-builds  && cp icon.png release-builds/Wallpaperio-linux-x64/icon.png"
   },
   "keywords": [
     "wallpaper",

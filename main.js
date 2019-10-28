@@ -26,7 +26,6 @@ var user_absolute_path;
 
 let tray;
 
-os
 /**
  * App
  */
@@ -37,7 +36,7 @@ app.on('ready', function() {
         appReady();
     } else {
         let settings_updated = {
-            path: path.join(os.homedir(), 'wallpaperio\\')
+            path: process.platform == 'win32' ? path.join(os.homedir(), 'wallpaperio', '\\') : path.join(os.homedir(), 'wallpaperio', '\/')
         };
         fs.writeFile("settings.json", JSON.stringify(settings_updated), function(err) {
             if(err) return console.log(err);
@@ -97,13 +96,19 @@ const trayMenuTemplate = [
     {
         label: 'Dislike this wallpaper',
         click() {
-            banWallpaper();
+            dislikeWallpaper();
         }
     },
     {
         label: 'Change location folder',
         click() {
            changePath();
+        }
+    },
+    {
+        label: 'json',
+        click() {
+           jzon();
         }
     },
     {
@@ -129,12 +134,7 @@ const randomPhotoDialog = {
  // Download new photo -> save as file with datetime in name -> set it as wallpaper
 function getPhoto() {
     if(DEBUG) console.log('getPhoto');
-    // let date = new Date().toLocaleString();
-    // let path = user_absolute_path + date.replace(/:\s*/g, ";") + '.jpg'
-    // downloadFile(PHOTO_URL, path).then(function(){
-    //     wallpaper.set(path);
-    // })
-
+    
     // Get body from html request
     request(PHOTO_URL, (error, response, html) => {
         if(!error && response.statusCode == 200) {
@@ -142,16 +142,23 @@ function getPhoto() {
             // Search through body to find og:image link
             var $ = cheerio.load(html);
             var img = $('meta[property="og:image"]').attr('content');
-            
+            var title = $('meta[property="og:title"]').attr('content');
+
             // Format file path
-            let date = new Date().toLocaleString();
-            let file_path = path.join(user_absolute_path, date.replace(/:\s*/g, ";") + '.jpg');
+            let file_path = path.join(user_absolute_path, title + '.jpg');
             if(DEBUG) console.log('Path: ' + file_path);
 
-            // If photo is downloaded, save it as wallpaper
-            downloadFile(img, file_path).then(function(){
+            // If this potd is already downloaded notify user about it
+            if (fs.existsSync(file_path))
+                notifier.notify({
+                    title: 'Wallpaperio - Information',
+                    message: 'This photo of the day is already downloaded.',
+                    sound: true,
+                });
+            else downloadFile(img, file_path).then(function() {
+                // If photo is downloaded, save it as wallpaper
                 wallpaper.set(file_path);
-            }).then(function() {
+
                 // Restart interval time
                 clearInterval(interval);
                 interval = setInterval(() => slideShow(), INTERVAL_TIME);
@@ -285,21 +292,41 @@ function slideShow() {
     }
 }
 
-// Add _banned in name to prevent using this file as wallpaper
-function banWallpaper() {
-    if(DEBUG) console.log('banWallpaper');
-    wallpaper.get().then(function(result) {
-        // Get filename instead of full path
-        var old_wallpaper = result;
-        var current_wallpaper = path.join(user_absolute_path, result.substring(result.lastIndexOf('\\'||'\/') + 1).replace(/\.[^/.]+$/, "")+'_banned.jpg');
+// Ban current wallpaper
+function dislikeWallpaper() {
+    wallpaper.get().then(function(current_wallpaper) {
+        banPhoto(current_wallpaper);
+    });
+}
+
+// Add tag _banned in filename to prevent using this file as wallpaper
+function banPhoto(photo_path) {
+    if(DEBUG) console.log('banPhoto');
+        var initial_path = photo_path;
+        // Add tag _banned to filename
+        var target_path = path.join(user_absolute_path, path.basename(photo_path, path.extname(photo_path)) + '_banned' + path.extname(photo_path));
         if(DEBUG) {
-            console.log(old_wallpaper);
-            console.log(current_wallpaper);
+            console.log(initial_path);
+            console.log(target_path);
         }
-        fs.rename(old_wallpaper, current_wallpaper, function(err) {
+        fs.rename(initial_path, target_path, function(err) {
             if ( err ) console.log('ERROR: ' + err);
         });
-    });
+}
+
+// Remove tag _banned in filename
+function unbanPhoto(photo_path) {
+    if(DEBUG) console.log('unbanPhoto');
+        var initial_path = photo_path;
+        // Remove tag _banned from filename
+        var target_path = initial_path.replace('_banned', '');
+        if(DEBUG) {
+            console.log(initial_path);
+            console.log(target_path);
+        }
+        fs.rename(initial_path, target_path, function(err) {
+            if ( err ) console.log('ERROR: ' + err);
+        });
 }
 
 // Check if filename ends with _banned (without extension) 52_banned.jpg -> _banned
@@ -316,7 +343,7 @@ function changePath() {
         if(!new_path.canceled) {
             // Update settings.json file
             let settings_updated = {
-                path: path.join(String(new_path.filePaths), 'wallpaperio\\')
+                path: process.platform == 'win32' ? path.join(String(new_path.filePaths), 'wallpaperio', '\\') : path.join(String(new_path.filePaths), 'wallpaperio', '\/')
             };
             fs.writeFileSync('settings.json', JSON.stringify(settings_updated));
 
