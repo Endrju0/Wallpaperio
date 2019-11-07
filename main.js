@@ -6,8 +6,9 @@ const request = require('request');
 const wallpaper = require('wallpaper');
 const cheerio = require('cheerio');
 const notifier = require('node-notifier');
+const url = require('url');
 
-const {app, Menu, Tray, dialog} = electron;
+const {app, Menu, Tray, dialog, BrowserWindow} = electron;
 
 // env variables
 // const PHOTO_URL2 = 'https://picsum.photos/200/300';
@@ -23,6 +24,7 @@ var slideshow_queue = [];
 var interval = setInterval(() => slideShow(), INTERVAL_TIME);
 var tcp_err_ctr = 0;
 var user_absolute_path;
+var file_path, req_passed;
 
 let tray;
 
@@ -106,12 +108,6 @@ const trayMenuTemplate = [
         }
     },
     {
-        label: 'json',
-        click() {
-           jzon();
-        }
-    },
-    {
         label: 'Quit',
         accelerator: 'CmdOrCtrl+Q',
         click() {
@@ -131,21 +127,23 @@ const randomPhotoDialog = {
  * Functions
  */
 
- // Download new photo -> save as file with datetime in name -> set it as wallpaper
+// Download new photo -> save as file with datetime in name -> set it as wallpaper
 function getPhoto() {
     if(DEBUG) console.log('getPhoto');
-    
+
     // Get body from html request
     request(PHOTO_URL, (error, response, html) => {
         if(!error && response.statusCode == 200) {
             if(DEBUG) console.log('Request success');
+			req_passed = true;
+			
             // Search through body to find og:image link
             var $ = cheerio.load(html);
             var img = $('meta[property="og:image"]').attr('content');
             var title = $('meta[property="og:title"]').attr('content');
 
             // Format file path
-            let file_path = path.join(user_absolute_path, title + '.jpg');
+			if(req_passed == true) file_path = path.join(user_absolute_path, title + '_banned.jpg');
             if(DEBUG) console.log('Path: ' + file_path);
 
             // If this potd is already downloaded notify user about it
@@ -157,6 +155,8 @@ function getPhoto() {
                 });
             else downloadFile(img, file_path).then(function() {
                 // If photo is downloaded, save it as wallpaper
+				console.log(file_path);
+				unbanPhoto(file_path);
                 wallpaper.set(file_path);
 
                 // Restart interval time
@@ -170,6 +170,7 @@ function getPhoto() {
             });
         } else {
             if(DEBUG) console.log('Request rejected: ' + tcp_err_ctr);
+			req_passed = false;
             if(tcp_err_ctr++ < CONN_ATTEMPT ) getPhoto();
             else {
                 tcp_err_ctr = 0;
